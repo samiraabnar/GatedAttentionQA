@@ -1,0 +1,38 @@
+--------------------------------------------------------------------------------
+Processing file 'cells.py'
+ outputting to 'cells.py'
+--------------------------------------------------------------------------------
+
+'cells.py' Line 35
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:       i, j, f, o = tf.split(1, 4, concat)
+                                                   
+    New:       i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
+                                     ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~        
+
+'cells.py' Line 98
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:           cur_inp, new_state = cell(tf.concat(1, [inputs, first_layer_input]), cur_state)
+                                                                                                   
+    New:           cur_inp, new_state = cell(tf.concat(axis=1, values=[inputs, first_layer_input]), cur_state)
+                                                       ~~~~~   ~~~~~~~                                         
+
+'cells.py' Line 100
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:     return cur_inp, tf.concat(1, new_states)                                                     
+    New:     return cur_inp, tf.concat(axis=1, values=new_states)                                       ~~~~~   ~~~~~~~           
+
+
