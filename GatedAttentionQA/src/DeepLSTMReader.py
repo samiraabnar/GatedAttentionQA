@@ -66,7 +66,7 @@ class DeepLSTMReader(BaseReaderModel):
         tf.summary.histogram("embeddings",self.embedding)
 
         self.__build_deep_lstm_cell()
-        cell_outputs, states = tf.nn.dynamic_rnn(cell=self.stacked_cell,
+        states_series, current_state = tf.nn.dynamic_rnn(cell=self.stacked_cell,
                                                 inputs=tf.stack(embedded_inputs),
                                                 sequence_length=d_q_lengths,
                                                 initial_state=None,
@@ -77,9 +77,9 @@ class DeepLSTMReader(BaseReaderModel):
                                                 scope=None)
 
 
-        self.batch_states = states# tf.stack(states)
+        self.batch_states = current_state# tf.stack(states)
 
-        tf.logging.info(self.batch_states)
+
         self.output_size = self.hparams.depth * self.hparams.number_of_hidden_units
 
         """startings = tf.concat([
@@ -88,7 +88,10 @@ class DeepLSTMReader(BaseReaderModel):
                             tf.zeros((self.hparams.batch_size,1),dtype=tf.int64)],axis=1)
         outputs =  [self.batch_states[0][i,d_q_lengths[i],:] for i in range(self.hparams.batch_size)]"""
 
-        outputs= tf.concat(self.batch_states[0],axis=0)
+        outputs= tf.concat(self.batch_states[1],axis=1)
+        tf.logging.set_verbosity(tf.logging.INFO)
+        tf.logging.info(outputs)
+        tf.logging.info(states_series)
 
 
         self.outputs = tf.reshape(outputs, [self.hparams.batch_size, self.output_size])
@@ -114,7 +117,7 @@ class DeepLSTMReader(BaseReaderModel):
             self.cell = tf.nn.rnn_cell.DropoutWrapper(self.cell, output_keep_prob=self.hparams.keep_prob)
         #elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
         #else: #if self.mode == tf.contrib.learn.ModeKeys.INFER:
-        self.stacked_cell = tf.contrib.rnn.MultiRNNCell([self.cell] * self.hparams.depth)
+        self.stacked_cell = tf.contrib.rnn.MultiRNNCell([self.cell] * self.hparams.depth,state_is_tuple=True)
 
         self.initial_state = self.stacked_cell.zero_state(self.hparams.batch_size, tf.float32)
 
@@ -219,10 +222,10 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
     hparams.DEFINE_integer("depth", 2, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
-    hparams.DEFINE_integer("number_of_hidden_units", 512, "The size of hidden layers")
+    hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
     hparams.DEFINE_float("learning_rate", 5e-5, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
-    hparams.DEFINE_float("keep_prob", 0.5, "keep_prob [0.5]")
+    hparams.DEFINE_float("keep_prob", 0.8, "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
     hparams.DEFINE_string("dtype", "float32", "dtype [float32]")
     hparams.DEFINE_string("model", "LSTM", "The type of model to train and test [LSTM, BiLSTM, Attentive, Impatient]")
@@ -241,7 +244,7 @@ if __name__ == '__main__':
     hparams.DEFINE_float("--max_gradient_norm", 5.0,"Clip gradients to this norm.")
     hparams = hparams.FLAGS
 
-    with tf.device('/cpu:0'), tf.Session() as sess:
+    with tf.Session() as sess:
         deep_lstm_reader = DeepLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
         deep_lstm_reader.define_graph()
         deep_lstm_reader._define_train()
