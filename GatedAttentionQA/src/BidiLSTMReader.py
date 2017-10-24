@@ -44,7 +44,7 @@ class BidiLSTMReader(DeepLSTMReader):
             axis=1), axis=1)
 
 
-        initializer = tf.initializers.orthogonal(gain=1.0,dtype=tf.float32)
+        initializer = tf.contrib.keras.initializers.Orthogonal(gain=1.0,dtype=tf.float32)
 
         self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32)
         tf.logging.info(self.embedding.get_shape())
