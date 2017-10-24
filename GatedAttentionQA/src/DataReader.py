@@ -287,6 +287,11 @@ def test2(train_files):
 
         for i in range(len(train_files)):
             # Retrieve a single instance:
+            if i > 0 and (i % 1000 == 0):
+                writer.close()
+                filename = os.path.join("../data", "cnn" + "_"+str(i) + '.tfrecords')
+                writer = tf.python_io.TFRecordWriter(filename)
+
             (_, data, _) = sess.run(parsed_example)
             print(data[1])
             document = list(map(int,data[1].decode().split(" "))) + [0]
