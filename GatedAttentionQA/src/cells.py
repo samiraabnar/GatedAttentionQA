@@ -100,4 +100,4 @@ class MultiRNNCellWithSkipConn(tf.nn.rnn_cell.RNNCell):
             first_layer_input = tf.zeros_like(first_layer_input)
           cur_inp, new_state = cell(tf.concat(axis=1, values=[inputs, first_layer_input]), cur_state)
           new_states.append(new_state)
-    return cur_inp, tf.concat(axis=1, values=new_states)
+    return cur_inp, new_states

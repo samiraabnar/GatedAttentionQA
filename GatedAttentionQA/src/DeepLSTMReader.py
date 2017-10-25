@@ -174,7 +174,7 @@ class DeepLSTMReader(BaseReaderModel):
                 gradients, max_gradient_norm=self.hparams.max_gradient_norm)
 
             self.update = self.optimizer.apply_gradients(
-                zip(clipped_gradients, params))#, global_step=self.global_step)
+                zip(gradients, params))#, global_step=self.global_step)
 
 
 

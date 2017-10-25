@@ -2,7 +2,7 @@ from BaseReaderModel import BaseReaderModel
 from DeepLSTMReader import DeepLSTMReader
 from DataReader import *
 from utils import Util
-
+import cells
 import tensorflow as tf
 import numpy as np
 import time
@@ -26,42 +26,53 @@ class BidiLSTMReader(DeepLSTMReader):
         d_batch, q_batch, ans_batch, document_shape_batch, question_shape_batch, answer_shape_batch = tf.train.shuffle_batch(
             [document, question, answer, document_shape, question_shape, answer_shape], batch_size=self.hparams.batch_size,
             capacity=min_after_dequeue * 3 + 1, min_after_dequeue=min_after_dequeue)
-        d_q_batch = tf.sparse_concat(axis=1, sp_inputs=[d_batch, q_batch], )
-        dense_d_q_batch = tf.sparse_to_dense(sparse_indices=d_q_batch.indices,
-                                             output_shape=d_q_batch.dense_shape,
-                                             sparse_values=d_q_batch.values,
+        #d_q_batch = tf.sparse_concat(axis=1, sp_inputs=[d_batch, q_batch], )
+        dense_d_batch = tf.sparse_to_dense(sparse_indices=d_batch.indices,
+                                             output_shape=d_batch.dense_shape,
+                                             sparse_values=d_batch.values,
                                              default_value=0,
                                              validate_indices=True,
                                              name=None)
+
+        dense_q_batch = tf.sparse_to_dense(sparse_indices=q_batch.indices,
+                                           output_shape=q_batch.dense_shape,
+                                           sparse_values=q_batch.values,
+                                           default_value=0,
+                                           validate_indices=True,
+                                           name=None)
         dens_ans_batch = tf.sparse_to_dense(sparse_indices=ans_batch.indices,
                                             output_shape=ans_batch.dense_shape,
                                             sparse_values=ans_batch.values,
                                             default_value=0,
                                             validate_indices=True,
                                             name=None)
-        d_q_lengths = tf.reduce_sum(tf.concat(
-            [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
-            axis=1), axis=1)
+        d_lengths = tf.reshape(document_shape_batch, (self.hparams.batch_size, 1))
+        q_lengths = tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))
+        #d_q_lengths = tf.reduce_sum(tf.concat(
+        #    [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
+        #    axis=1), axis=1)
 
 
         initializer = tf.contrib.keras.initializers.Orthogonal(gain=1.0,dtype=tf.float32)
 
         self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32)
         tf.logging.info(self.embedding.get_shape())
-        self.inputs = dense_d_q_batch
+        self.docs = dense_d_batch
+        self.qs = dense_q_batch
         self.y = dens_ans_batch[:,0]#tf.placeholder(tf.float32, [self.hparams.self.hparams.batch_size, self.vocab_size])
 
         #unstacked_inputs = tf.unstack(self.inputs,axis=1)
-        embedded_inputs = [tf.nn.embedding_lookup(self.embedding, self.inputs[i] ) for i in range(self.hparams.batch_size)]
+        embedded_docs = [tf.nn.embedding_lookup(self.embedding, self.docs[i] ) for i in range(self.hparams.batch_size)]
+        embedded_qs = [tf.nn.embedding_lookup(self.embedding, self.qs[i]) for i in range(self.hparams.batch_size)]
 
         #embedded_inputs = tf.stack(embedded_inputs)
         tf.summary.histogram("embeddings",self.embedding)
 
         self.__build_deep_lstm_cell(initializer=initializer)
-        states_series, current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.stacked_cell,
+        d_states_series, d_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.stacked_cell,
                                                                              cell_bw=self.stacked_cell,
-                                                inputs=tf.stack(embedded_inputs),
-                                                sequence_length=d_q_lengths,
+                                                inputs=tf.stack(embedded_docs),
+                                                sequence_length=d_lengths,
                                                 initial_state_fw=None,
                                                 initial_state_bw=None,
                                                 dtype=tf.float32,
@@ -70,31 +81,39 @@ class BidiLSTMReader(DeepLSTMReader):
                                                 time_major=False,
                                                 scope=None)
 
-        current_state_fw, current_state_bw = current_state
-        self.batch_states = tf.concat([current_state_fw[0][1], current_state_bw[0][1]],axis=1)# tf.stack(states)
+        q_states_series, q_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.stacked_cell,
+                                                                           cell_bw=self.stacked_cell,
+                                                                           inputs=tf.stack(embedded_qs),
+                                                                           sequence_length=q_lengths,
+                                                                           initial_state_fw=None,
+                                                                           initial_state_bw=None,
+                                                                           dtype=tf.float32,
+                                                                           parallel_iterations=None,
+                                                                           swap_memory=False,
+                                                                           time_major=False,
+                                                                           scope=None)
 
-
+        q_current_state_fw, q_current_state_bw = q_current_state
+        q_rep = tf.concat([q_current_state_fw[0][1], q_current_state_bw[0][1]],axis=1)# tf.stack(states)
         self.output_size = self.hparams.depth * self.hparams.number_of_hidden_units * 2
-
-        """startings = tf.concat([
-                            tf.zeros((self.hparams.batch_size,1),dtype=tf.int64),
-                            tf.reshape(d_q_lengths,(self.hparams.batch_size,1)) - 1,
-                            tf.zeros((self.hparams.batch_size,1),dtype=tf.int64)],axis=1)
-        outputs =  [self.batch_states[0][i,d_q_lengths[i],:] for i in range(self.hparams.batch_size)]"""
-
-        outputs= self.batch_states#tf.concat(self.batch_states[1],axis=1)
-        tf.logging.set_verbosity(tf.logging.INFO)
-        tf.logging.info(current_state_fw[0][1])
-        tf.logging.info(self.batch_states)
-        tf.logging.info(outputs)
-        tf.logging.info(states_series)
+        self.q_rep = tf.reshape(q_rep, [self.hparams.batch_size, self.output_size])
 
 
-        self.outputs = tf.reshape(outputs, [self.hparams.batch_size, self.output_size])
+        self.W_att_d = tf.get_variable("W_att_d", [self.hparams.number_of_hidden_units,self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
+        self.W_att_q = tf.get_variable("W_att_q", [self.hparams.number_of_hidden_units,self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
+
+        self.B_att = tf.get_variable("B_att", [self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
+
+        tf.logging.info(d_states_series)
+        self.attended_document_states = tf.multiply(tf.softmax(tf.matmul(d_states_series,self.W_att_d) + tf.matmul(self.q_rep,self.W_att_q) +self.B_att),d_states_series)
+        tf.logging.info(self.attended_document_states)
+        self.document_rep = tf.reduce_mean(self.attended_document_states,axis=1)
+        tf.logging.info(self.document_rep)
 
         self.W = tf.get_variable("W", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
         tf.summary.histogram("weights", self.W)
         tf.summary.histogram("output", self.outputs)
+        tf.logging.set_verbosity(tf.logging.INFO)
 
         self.y_ = tf.matmul(self.outputs,self.W)
 
