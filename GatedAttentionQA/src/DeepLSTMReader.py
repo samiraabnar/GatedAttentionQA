@@ -104,7 +104,9 @@ class DeepLSTMReader(BaseReaderModel):
 
         self.y_ = tf.matmul(self.outputs,self.W)
 
-        self.train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
+        cross_ent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
+        self.train_loss = (tf.reduce_sum(cross_ent) /
+                      self.hparams.batch_size)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
         tf.logging.info(tf.argmax(self.y_, 1))
         correct_prediction = tf.equal(self.y, tf.argmax(self.y_, 1))
