@@ -118,10 +118,12 @@ class BidiLSTMReader(DeepLSTMReader):
         self.document_rep = tf.reduce_mean(self.attended_document_states,axis=1)
         tf.logging.info(self.document_rep)
 
-        self.W = tf.get_variable("W", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
-        tf.summary.histogram("weights", self.W)
+        self.W_d = tf.get_variable("W_d", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
+        self.W_q = tf.get_variable("W_q", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
 
-        self.y_ = tf.matmul(self.document_rep,self.W)
+        tf.summary.histogram("weights", self.W_d)
+
+        self.y_ = tf.tanh(tf.add(tf.matmul(self.document_rep,self.W_d),tf.matmul(self.q_rep,self.W_q)))
 
         self.train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
