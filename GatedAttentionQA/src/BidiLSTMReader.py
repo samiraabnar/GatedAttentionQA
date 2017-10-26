@@ -111,7 +111,7 @@ class BidiLSTMReader(DeepLSTMReader):
         self.attention_input = [tf.tanh(tf.add(tf.matmul(sequence_output,self.W_att_d),tf.matmul(tf.reshape(q_rep,(1,self.output_size)),self.W_att_q) ))
                                                             for q_rep,sequence_output in zip(tf.unstack(self.q_rep),self.sequence_output)]
         tf.logging.info(self.attention_input)
-        self.attention_factors = [tf.softmax(tf.matmul(attention_input, self.W_att)) for attention_input in self.attention_input]
+        self.attention_factors = [tf.nn.softmax(tf.matmul(attention_input, self.W_att)) for attention_input in self.attention_input]
         self.attended_document_states = tf.multiply(self.attention_factors,self.sequence_output)
         tf.logging.info(self.attention_factors)
         tf.logging.info(self.attended_document_states)
