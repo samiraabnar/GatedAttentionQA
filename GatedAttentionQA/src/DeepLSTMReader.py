@@ -140,13 +140,13 @@ class DeepLSTMReader(BaseReaderModel):
         params = tf.trainable_variables()
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
             self.learning_rate = tf.constant(self.hparams.learning_rate)
-            inv_decay = warmup_factor ** (
-                tf.to_float(warmup_steps - self.global_step))
-            self.learning_rate = tf.cond(
-                self.global_step < self.hparams.learning_rate_warmup_steps,
-                lambda: inv_decay * self.learning_rate,
-                lambda: self.learning_rate,
-                name="learning_rate_decay_warump_cond")
+            #inv_decay = warmup_factor ** (
+            #    tf.to_float(warmup_steps - self.global_step))
+            #self.learning_rate = tf.cond(
+            #    self.global_step < self.hparams.learning_rate_warmup_steps,
+            #    lambda: inv_decay * self.learning_rate,
+            #    lambda: self.learning_rate,
+            #    name="learning_rate_decay_warump_cond")
 
             if self.hparams.optimizer == "sgd":
                 self.learning_rate = tf.cond(
@@ -172,11 +172,10 @@ class DeepLSTMReader(BaseReaderModel):
                 params,
                 colocate_gradients_with_ops=self.hparams.colocate_gradients_with_ops)
 
-            clipped_gradients, gradient_norm_summary = Util.gradient_clip(
-                gradients, max_gradient_norm=self.hparams.max_gradient_norm)
+            clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hparams.max_gradient_norm)
 
             self.update = self.optimizer.apply_gradients(
-                zip(gradients, params))#, global_step=self.global_step)
+                zip(clipped_gradients, params))#, global_step=self.global_step)
 
 
 
@@ -245,7 +244,7 @@ if __name__ == '__main__':
     hparams.DEFINE_bool("colocate_gradients_with_ops", True,
                         "Whether try colocating gradients with "
                               "corresponding op")
-    hparams.DEFINE_float("--max_gradient_norm", 5.0,"Clip gradients to this norm.")
+    hparams.DEFINE_float("max_gradient_norm", 5.0,"Clip gradients to this norm.")
     hparams = hparams.FLAGS
 
     with tf.Session() as sess:
