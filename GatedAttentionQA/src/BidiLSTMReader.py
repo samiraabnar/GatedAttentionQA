@@ -46,8 +46,8 @@ class BidiLSTMReader(DeepLSTMReader):
                                             default_value=0,
                                             validate_indices=True,
                                             name=None)
-        d_lengths = tf.reshape(document_shape_batch, (self.hparams.batch_size, 1))
-        q_lengths = tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))
+        d_lengths = tf.reshape(document_shape_batch, [self.hparams.batch_size])
+        q_lengths = tf.reshape(question_shape_batch, [self.hparams.batch_size])
         #d_q_lengths = tf.reduce_sum(tf.concat(
         #    [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
         #    axis=1), axis=1)
@@ -99,23 +99,29 @@ class BidiLSTMReader(DeepLSTMReader):
         self.q_rep = tf.reshape(q_rep, [self.hparams.batch_size, self.output_size])
 
 
-        self.W_att_d = tf.get_variable("W_att_d", [self.hparams.number_of_hidden_units,self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
-        self.W_att_q = tf.get_variable("W_att_q", [self.hparams.number_of_hidden_units,self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
-
-        self.B_att = tf.get_variable("B_att", [self.hparams.number_of_hidden_units,],initializer=initializer,dtype="float32")
+        self.W_att_d = tf.get_variable("W_att_d", [self.output_size,self.output_size,],initializer=initializer,dtype="float32")
+        self.W_att_q = tf.get_variable("W_att_q", [self.output_size,self.output_size,],initializer=initializer,dtype="float32")
+        self.W_att = tf.get_variable("W_att", [self.output_size,1,],initializer=initializer,dtype="float32")
+        #self.B_att = tf.get_variable("B_att", [self.hparams.number_of_hidden_units],initializer=initializer,dtype="float32")
 
         tf.logging.info(d_states_series)
-        self.attended_document_states = tf.multiply(tf.softmax(tf.matmul(d_states_series,self.W_att_d) + tf.matmul(self.q_rep,self.W_att_q) +self.B_att),d_states_series)
+        d_states_series_fw, d_states_series_bw = d_states_series
+        self.sequence_output = tf.unstack(tf.concat([d_states_series_fw,d_states_series_bw],axis=2))
+        tf.logging.info(self.sequence_output)
+        self.attention_input = [tf.tanh(tf.add(tf.matmul(sequence_output,self.W_att_d),tf.matmul(tf.reshape(q_rep,(1,self.output_size)),self.W_att_q) ))
+                                                            for q_rep,sequence_output in zip(tf.unstack(self.q_rep),self.sequence_output)]
+        tf.logging.info(self.attention_input)
+        self.attention_factors = [tf.exp(tf.matmul(attention_input, self.W_att)) for attention_input in self.attention_input]
+        self.attended_document_states = tf.multiply(self.attention_factors,self.sequence_output)
+        tf.logging.info(self.attention_factors)
         tf.logging.info(self.attended_document_states)
         self.document_rep = tf.reduce_mean(self.attended_document_states,axis=1)
         tf.logging.info(self.document_rep)
 
         self.W = tf.get_variable("W", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
         tf.summary.histogram("weights", self.W)
-        tf.summary.histogram("output", self.outputs)
-        tf.logging.set_verbosity(tf.logging.INFO)
 
-        self.y_ = tf.matmul(self.outputs,self.W)
+        self.y_ = tf.matmul(self.document_rep,self.W)
 
         self.train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
@@ -207,6 +213,7 @@ if __name__ == '__main__':
     hparams.DEFINE_float("--max_gradient_norm", 5.0,"Clip gradients to this norm.")
     hparams = hparams.FLAGS
 
+    tf.logging.set_verbosity(tf.logging.INFO)
     with tf.Session() as sess:
         bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
         bidi_lstm_reader.define_graph()
