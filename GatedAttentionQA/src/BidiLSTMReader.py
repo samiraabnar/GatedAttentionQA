@@ -53,7 +53,7 @@ class BidiLSTMReader(DeepLSTMReader):
         #    axis=1), axis=1)
 
 
-        initializer = tf.contrib.keras.initializers.Orthogonal(gain=1.0,dtype=tf.float32)
+        initializer = tf.contrib.keras.initializers.Orthogonal(gain=0.1,dtype=tf.float32)
 
         self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32)
         tf.logging.info(self.embedding.get_shape())
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     hparams = tf.flags
     hparams.DEFINE_integer("training_size", 1000, "total number of training samples")
     hparams.DEFINE_integer("number_of_epochs", 25, "Epoch to train [25]")
-    hparams.DEFINE_integer("vocab_size", 100000, "The size of vocabulary [10000]")
+    hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
     hparams.DEFINE_integer("depth", 1, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
