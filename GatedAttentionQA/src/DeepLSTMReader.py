@@ -103,7 +103,7 @@ class DeepLSTMReader(BaseReaderModel):
         tf.summary.histogram("output", self.outputs)
 
         self.y_ = tf.matmul(self.outputs,self.W)
-
+        tf.logging.info(self.y_)
         cross_ent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
         self.train_loss = (tf.reduce_sum(cross_ent) /
                       self.hparams.batch_size)
