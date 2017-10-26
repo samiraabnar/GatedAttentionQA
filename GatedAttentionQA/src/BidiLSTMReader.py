@@ -125,7 +125,10 @@ class BidiLSTMReader(DeepLSTMReader):
 
         self.y_ = tf.tanh(tf.add(tf.matmul(self.document_rep,self.W_d),tf.matmul(self.q_rep,self.W_q)))
 
-        self.train_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_,labels=self.y)
+        tf.logging.info(self.y_)
+        cross_ent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_, labels=self.y)
+        self.train_loss = (tf.reduce_sum(cross_ent) /
+                           self.hparams.batch_size)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
 
         correct_prediction = tf.equal(self.y, tf.argmax(self.y_, 1))
