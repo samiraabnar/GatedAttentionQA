@@ -51,8 +51,11 @@ class DataReader(object):
         if not tf.gfile.Exists(vocabulary_path):
             t0 = time.time()
             print("Creating vocabulary %s" % (vocabulary_path))
+            print("max_vocabulary_size: ", max_vocabulary_size)
             texts = [word for word in context.lower().split() if word not in DataReader.cachedStopWords]
             dictionary = corpora.Dictionary([texts], prune_at=max_vocabulary_size)
+            dictionary.filter_extremes(no_below=1, no_above=1, keep_n=max_vocabulary_size)
+            print("vocab length: ", len(dictionary.token2id))
             print("Tokenize : %.4fs" % (t0 - time.time()))
             dictionary.save(vocabulary_path)
 
@@ -73,6 +76,8 @@ class DataReader(object):
         """
         if tf.gfile.Exists(vocabulary_path):
             vocab = corpora.Dictionary.load(vocabulary_path)
+            print("vocab length: ",len(vocab.token2id))
+
             return vocab.token2id, vocab.token2id.keys()
         else:
             raise ValueError("Vocabulary file %s not found.", vocabulary_path)
@@ -391,10 +396,16 @@ if __name__ == '__main__':
     train_files = glob(os.path.join("../data", "cnn", "questions",
                                     "training", "*.question.ids%s_*" % (vocab_size)))
 
-    #dr = DataReader()
+    dr = DataReader()
     #dr.prepare_data(data_dir="../data",
     #                dataset_name="cnn",
     #                vocab_size=vocab_size)
-    test2(train_files)
+    #test2(train_files)
 
     #reader2()
+
+    vocab, rev_vocab = dr.load_vocab(data_dir="../data/",
+                                                             dataset_name="cnn",
+                                                             vocab_size=10000)
+    vocab_size = len(vocab.keys())
+    print(vocab_size)
