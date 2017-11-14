@@ -127,7 +127,7 @@ class DeepLSTMReader(BaseReaderModel):
 
 
     def _define_train(self):
-        warmup_steps = self.hparams.learning_rate_warmup_steps
+        """warmup_steps = self.hparams.learning_rate_warmup_steps
         warmup_factor = self.hparams.learning_rate_warmup_factor
         print("  start_decay_step=%d, learning_rate=%g, decay_steps %d, "
               "decay_factor %g, learning_rate_warmup_steps=%d, "
@@ -135,11 +135,15 @@ class DeepLSTMReader(BaseReaderModel):
               (self.hparams.start_decay_step, self.hparams.learning_rate, self.hparams.decay_steps,
                self.hparams.decay_factor, warmup_steps, warmup_factor,
                (self.hparams.learning_rate * warmup_factor ** warmup_steps)))
+        """
         self.global_step = tf.Variable(0, trainable=False)
 
-        params = tf.trainable_variables()
+
+
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-            self.learning_rate = tf.constant(self.hparams.learning_rate)
+            starter_learning_rate = self.hparams.learning_rate
+            self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step,
+                                                       1000, 0.96, staircase=True)
             #inv_decay = warmup_factor ** (
             #    tf.to_float(warmup_steps - self.global_step))
             #self.learning_rate = tf.cond(
@@ -165,17 +169,22 @@ class DeepLSTMReader(BaseReaderModel):
                 assert float(
                     self.hparams.learning_rate
                 ) <= 0.001, "! High Adam learning rate %g" % self.hparams.learning_rate
-                self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+                self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
-            gradients = tf.gradients(
-                self.train_loss,
-                params,
-                colocate_gradients_with_ops=self.hparams.colocate_gradients_with_ops)
 
-            clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hparams.max_gradient_norm)
 
-            self.update = self.optimizer.apply_gradients(
-                zip(clipped_gradients, params))#, global_step=self.global_step)
+
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+                params = tf.trainable_variables()
+                gradients = tf.gradients(
+                    self.train_loss,
+                    params,
+                    colocate_gradients_with_ops=self.hparams.colocate_gradients_with_ops)
+
+                clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hparams.max_gradient_norm)
+                #self.update = self.optimizer.minimize(self.train_loss,global_step=self.global_step)
+                self.update = self.optimizer.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
 
 
 

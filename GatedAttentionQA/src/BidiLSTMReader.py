@@ -16,7 +16,7 @@ class BidiLSTMReader(DeepLSTMReader):
     def define_graph(self):
 
 
-        filenames = ["../data/cnn.tfrecords"]
+        filenames = ["../data/cnn_0.tfrecords"]
         min_after_dequeue = 1000
 
         filename_queue = tf.train.string_input_producer(
@@ -55,17 +55,17 @@ class BidiLSTMReader(DeepLSTMReader):
 
         initializer = tf.contrib.keras.initializers.Orthogonal(gain=0.1,dtype=tf.float32)
 
-        self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32)
+        self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32,trainable=True)
         tf.logging.info(self.embedding.get_shape())
         self.docs = dense_d_batch
         self.qs = dense_q_batch
+        tf.logging.info(self.qs)
         self.y = dens_ans_batch[:,0]#tf.placeholder(tf.float32, [self.hparams.self.hparams.batch_size, self.vocab_size])
-
+        tf.logging.info(self.y)
         #unstacked_inputs = tf.unstack(self.inputs,axis=1)
         embedded_docs = [tf.nn.embedding_lookup(self.embedding, self.docs[i] ) for i in range(self.hparams.batch_size)]
         embedded_qs = [tf.nn.embedding_lookup(self.embedding, self.qs[i]) for i in range(self.hparams.batch_size)]
 
-        #embedded_inputs = tf.stack(embedded_inputs)
         tf.summary.histogram("embeddings",self.embedding)
 
         self.__build_deep_lstm_cell(initializer=initializer)
@@ -91,22 +91,34 @@ class BidiLSTMReader(DeepLSTMReader):
                                                                            parallel_iterations=None,
                                                                            swap_memory=False,
                                                                            time_major=False,
-                                                                           scope=None)
+                                                                         scope=None)
 
-        q_current_state_fw, q_current_state_bw = q_current_state
-        q_rep = tf.concat([q_current_state_fw[0][1], q_current_state_bw[0][1]],axis=1)# tf.stack(states)
+        q_state_fw, q_state_bw = q_current_state
+        tf.logging.info(q_state_fw)
+        q_current_state_fw =  tf.concat([state[1] for state in q_state_fw],axis=1)#tf.stack([state[length - 1] for state,length in zip(tf.unstack(q_state_fw),tf.unstack(q_lengths))])
+        tf.logging.info(q_current_state_fw)
+
+        q_current_state_bw = tf.concat([state[1] for state in q_state_bw],axis=1)#tf.stack([state[length - 1] for state, length in zip(tf.unstack(q_state_bw), tf.unstack(q_lengths))])
+        tf.logging.info(q_current_state_bw)
+
+        q_rep = tf.concat([q_current_state_fw, q_current_state_bw],axis=1)# tf.stack(states)
+        tf.logging.info(q_rep)
         self.output_size = self.hparams.depth * self.hparams.number_of_hidden_units * 2
         self.q_rep = tf.reshape(q_rep, [self.hparams.batch_size, self.output_size])
+        self.document_token_state_size = self.hparams.number_of_hidden_units * 2
 
 
-        self.W_att_d = tf.get_variable("W_att_d", [self.output_size,self.output_size,],initializer=initializer,dtype="float32")
-        self.W_att_q = tf.get_variable("W_att_q", [self.output_size,self.output_size,],initializer=initializer,dtype="float32")
-        self.W_att = tf.get_variable("W_att", [self.output_size,1,],initializer=initializer,dtype="float32")
+
+        self.W_proj = tf.get_variable("W_proj", [self.document_token_state_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
+        self.W_att_d = tf.get_variable("W_att_d", [self.output_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
+        self.W_att_q = tf.get_variable("W_att_q", [self.output_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
+        self.W_att = tf.get_variable("W_att", [self.output_size,1,],initializer=initializer,dtype="float32",trainable=True)
         #self.B_att = tf.get_variable("B_att", [self.hparams.number_of_hidden_units],initializer=initializer,dtype="float32")
 
         tf.logging.info(d_states_series)
         d_states_series_fw, d_states_series_bw = d_states_series
-        self.sequence_output = tf.unstack(tf.concat([d_states_series_fw,d_states_series_bw],axis=2))
+        self.raw_sequence_output = tf.unstack(tf.concat([d_states_series_fw,d_states_series_bw],axis=2))
+        self.sequence_output = [tf.matmul(s,self.W_proj) for s in self.raw_sequence_output]
         tf.logging.info(self.sequence_output)
         self.attention_input = [tf.tanh(tf.add(tf.matmul(sequence_output,self.W_att_d),tf.matmul(tf.reshape(q_rep,(1,self.output_size)),self.W_att_q) ))
                                                             for q_rep,sequence_output in zip(tf.unstack(self.q_rep),self.sequence_output)]
@@ -118,14 +130,17 @@ class BidiLSTMReader(DeepLSTMReader):
         self.document_rep = tf.reduce_mean(self.attended_document_states,axis=1)
         tf.logging.info(self.document_rep)
 
-        self.W_d = tf.get_variable("W_d", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
-        self.W_q = tf.get_variable("W_q", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32")
+        self.W_d = tf.get_variable("W_d", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32",trainable=True)
+
+        self.W_q = tf.get_variable("W_q", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32",trainable=True)
 
         tf.summary.histogram("weights", self.W_d)
 
-        self.y_ = tf.tanh(tf.add(tf.matmul(self.document_rep,self.W_d),tf.matmul(self.q_rep,self.W_q)))
-
+        #self.y_ = tf.tanh(tf.add(tf.matmul(self.document_rep,self.W_d),tf.matmul(self.q_rep,self.W_q)))
+        self.y_ = tf.add(tf.matmul(self.document_rep,self.W_d),tf.matmul(self.q_rep,self.W_q))#tf.matmul(self.q_rep,self.W_q) #tanh
+        #normed_logits = tf.contrib.layers.batch_norm(self.y_, scale=True)
         tf.logging.info(self.y_)
+        tf.logging.info(self.y)
         cross_ent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y_, labels=self.y)
         tf.logging.info(cross_ent)
         self.train_loss = (tf.reduce_sum(cross_ent) /
@@ -133,14 +148,15 @@ class BidiLSTMReader(DeepLSTMReader):
         tf.logging.info(self.train_loss)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
 
-        correct_prediction = tf.equal(self.y, tf.argmax(self.y_, 1))
+        correct_prediction = tf.equal(self.qs[:,0], tf.argmax(self.y_, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         tf.summary.scalar("accuracy", self.accuracy)
 
 
     def __build_deep_lstm_cell(self,initializer):
-        self.cell = tf.contrib.rnn.LSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0, use_peepholes=True, state_is_tuple=True)
+        self.cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
 
+        self.cell = tf.contrib.rnn.ResidualWrapper(self.cell)
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
             self.cell = tf.nn.rnn_cell.DropoutWrapper(self.cell, output_keep_prob=self.hparams.keep_prob)
         #elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
@@ -196,12 +212,12 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("number_of_epochs", 25, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
-    hparams.DEFINE_integer("depth", 1, "Depth [1]")
+    hparams.DEFINE_integer("depth", 2, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
-    hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
-    hparams.DEFINE_float("learning_rate", 5e-5, "Learning rate [0.00005]")
+    hparams.DEFINE_integer("number_of_hidden_units", 128, "The size of hidden layers")
+    hparams.DEFINE_float("learning_rate", 1e-4, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
-    hparams.DEFINE_float("keep_prob", 0.8, "keep_prob [0.5]")
+    hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
     hparams.DEFINE_string("dtype", "float32", "dtype [float32]")
     hparams.DEFINE_string("model", "LSTM", "The type of model to train and test [LSTM, BiLSTM, Attentive, Impatient]")

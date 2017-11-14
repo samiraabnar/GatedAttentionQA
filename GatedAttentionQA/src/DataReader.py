@@ -345,7 +345,7 @@ def parser(record):
 
 
 def reader2():
-    filenames = ["../data/cnn.tfrecords"]
+    filenames = ["../data/cnn_0.tfrecords"]
     batch_size = 10
     min_after_dequeue = 1000
 
@@ -396,16 +396,16 @@ if __name__ == '__main__':
     train_files = glob(os.path.join("../data", "cnn", "questions",
                                     "training", "*.question.ids%s_*" % (vocab_size)))
 
-    dr = DataReader()
+    #dr = DataReader()
     #dr.prepare_data(data_dir="../data",
     #                dataset_name="cnn",
     #                vocab_size=vocab_size)
     #test2(train_files)
 
-    #reader2()
+    reader2()
 
-    vocab, rev_vocab = dr.load_vocab(data_dir="../data/",
-                                                             dataset_name="cnn",
-                                                             vocab_size=10000)
-    vocab_size = len(vocab.keys())
-    print(vocab_size)
+    #vocab, rev_vocab = dr.load_vocab(data_dir="../data/",
+    #                                                         dataset_name="cnn",
+    #                                                         vocab_size=10000)
+    #vocab_size = len(vocab.keys())
+    #print(vocab_size)
