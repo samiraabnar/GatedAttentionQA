@@ -215,7 +215,7 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
     hparams.DEFINE_integer("depth", 2, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
-    hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
+    hparams.DEFINE_integer("number_of_hidden_units", 128, "The size of hidden layers")
     hparams.DEFINE_float("learning_rate", 1e-6, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
     hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
