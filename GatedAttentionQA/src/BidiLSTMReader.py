@@ -148,7 +148,7 @@ class BidiLSTMReader(DeepLSTMReader):
         tf.logging.info(self.train_loss)
         tf.summary.scalar("loss", tf.reduce_mean(self.train_loss))
 
-        correct_prediction = tf.equal(self.qs[:,0], tf.argmax(self.y_, 1))
+        correct_prediction = tf.equal(self.y, tf.argmax(self.y_, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         tf.summary.scalar("accuracy", self.accuracy)
 
@@ -209,13 +209,13 @@ if __name__ == '__main__':
 
     hparams = tf.flags
     hparams.DEFINE_integer("training_size", 1000, "total number of training samples")
-    hparams.DEFINE_integer("number_of_epochs", 25, "Epoch to train [25]")
+    hparams.DEFINE_integer("number_of_epochs", 100, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
     hparams.DEFINE_integer("depth", 2, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
-    hparams.DEFINE_integer("number_of_hidden_units", 128, "The size of hidden layers")
-    hparams.DEFINE_float("learning_rate", 1e-4, "Learning rate [0.00005]")
+    hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
+    hparams.DEFINE_float("learning_rate", 1e-5, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
     hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
