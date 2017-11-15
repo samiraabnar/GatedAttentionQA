@@ -130,13 +130,13 @@ class DeepLSTMReader(BaseReaderModel):
         """warmup_steps = self.hparams.learning_rate_warmup_steps
         warmup_factor = self.hparams.learning_rate_warmup_factor
         """
-        print("  start_decay_step=%d, learning_rate=%g, decay_steps %d, "
+        """print("  start_decay_step=%d, learning_rate=%g, decay_steps %d, "
               "decay_factor %g, learning_rate_warmup_steps=%d, "
               "learning_rate_warmup_factor=%g, starting_learning_rate=%g" %
               (self.hparams.start_decay_step, self.hparams.learning_rate, self.hparams.decay_steps,
                self.hparams.decay_factor, warmup_steps, warmup_factor,
                (self.hparams.learning_rate * warmup_factor ** warmup_steps)))
-
+        """
         self.global_step = tf.Variable(0, trainable=False)
 
 
