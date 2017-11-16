@@ -159,8 +159,8 @@ class BidiLSTMReader(DeepLSTMReader):
 
 
     def __build_bidi_lstm_cell(self,initializer):
-        fw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
-        bw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
+        fw_cell = tf.contrib.rnn.LSTMBlockCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
+        bw_cell = tf.contrib.rnn.LSTMBlockCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
 
         #fw_cell = tf.contrib.rnn.ResidualWrapper(fw_cell)
         #bw_cell = tf.contrib.rnn.ResidualWrapper(bw_cell)
