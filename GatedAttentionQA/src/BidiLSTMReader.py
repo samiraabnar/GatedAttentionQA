@@ -53,7 +53,7 @@ class BidiLSTMReader(DeepLSTMReader):
         #    axis=1), axis=1)
 
 
-        initializer = tf.contrib.layers.xavier_initializer()
+        initializer = tf.truncated_normal_initializer(stddev=1e-4) #tf.contrib.layers.xavier_initializer()
         #tf.contrib.keras.initializers.Orthogonal(gain=0.1,dtype=tf.float32)
 
         self.embedding = tf.get_variable("embedding",[self.vocab_size,self.hparams.number_of_hidden_units],initializer=initializer,dtype=tf.float32,trainable=True)
@@ -112,7 +112,7 @@ class BidiLSTMReader(DeepLSTMReader):
 
 
 
-        self.W_proj = tf.get_variable("W_proj", [self.document_token_state_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
+        #self.W_proj = tf.get_variable("W_proj", [self.document_token_state_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
         self.W_att_d = tf.get_variable("W_att_d", [self.output_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
         self.W_att_q = tf.get_variable("W_att_q", [self.output_size,self.output_size,],initializer=initializer,dtype="float32",trainable=True)
         self.W_att = tf.get_variable("W_att", [self.output_size,1,],initializer=initializer,dtype="float32",trainable=True)
@@ -123,7 +123,7 @@ class BidiLSTMReader(DeepLSTMReader):
 
 
         self.raw_sequence_output = tf.unstack(tf.concat([d_states_series_fw,d_states_series_bw],axis=2))
-        self.sequence_output = [tf.matmul(s,self.W_proj) for s in self.raw_sequence_output]
+        self.sequence_output = self.raw_sequence_output  #[tf.matmul(s,self.W_proj) for s in self.raw_sequence_output]
         tf.logging.info(self.sequence_output)
         self.attention_input = [tf.tanh(tf.add(tf.matmul(sequence_output,self.W_att_d),tf.matmul(tf.reshape(q_rep,(1,self.output_size)),self.W_att_q) ))
                                                             for q_rep,sequence_output in zip(tf.unstack(self.q_rep),self.sequence_output)]
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("depth", 1, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
     hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
-    hparams.DEFINE_float("learning_rate", 5e-6, "Learning rate [0.00005]")
+    hparams.DEFINE_float("learning_rate", 1e-6, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
     hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
