@@ -61,7 +61,7 @@ class BidiLSTMReader(DeepLSTMReader):
         self.docs = dense_d_batch
         self.qs = dense_q_batch
         tf.logging.info(self.qs)
-        self.y = dens_ans_batch[:,0]#tf.placeholder(tf.float32, [self.hparams.self.hparams.batch_size, self.vocab_size])
+        self.y = tf.stack(dens_ans_batch[:,0])#tf.placeholder(tf.float32, [self.hparams.self.hparams.batch_size, self.vocab_size])
         tf.logging.info(self.y)
         #unstacked_inputs = tf.unstack(self.inputs,axis=1)
         embedded_docs = [tf.nn.embedding_lookup(self.embedding, self.docs[i] ) for i in range(self.hparams.batch_size)]
@@ -132,7 +132,7 @@ class BidiLSTMReader(DeepLSTMReader):
         self.attended_document_states = tf.multiply(self.attention_factors,self.sequence_output)
         tf.logging.info(self.attention_factors)
         tf.logging.info(self.attended_document_states)
-        self.document_rep = tf.reduce_mean(self.attended_document_states,axis=1)
+        self.document_rep = tf.reduce_sum(self.attended_document_states,axis=1)
         tf.logging.info(self.document_rep)
 
         self.W_d = tf.get_variable("W_d", [self.output_size,self.vocab_size,],initializer=initializer,dtype="float32",trainable=True)
@@ -162,8 +162,8 @@ class BidiLSTMReader(DeepLSTMReader):
         fw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
         bw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
 
-        fw_cell = tf.contrib.rnn.ResidualWrapper(fw_cell)
-        bw_cell = tf.contrib.rnn.ResidualWrapper(bw_cell)
+        #fw_cell = tf.contrib.rnn.ResidualWrapper(fw_cell)
+        #bw_cell = tf.contrib.rnn.ResidualWrapper(bw_cell)
 
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
             fw_cell = tf.nn.rnn_cell.DropoutWrapper(fw_cell, output_keep_prob=self.hparams.keep_prob)
