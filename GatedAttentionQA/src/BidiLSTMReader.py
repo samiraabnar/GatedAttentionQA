@@ -69,9 +69,10 @@ class BidiLSTMReader(DeepLSTMReader):
 
         tf.summary.histogram("embeddings",self.embedding)
 
-        self.__build_deep_lstm_cell(initializer=initializer)
-        d_states_series, d_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.stacked_cell,
-                                                                             cell_bw=self.stacked_cell,
+        self.fw_cell_q, self.bw_cell_q, _,_ = self.__build_bidi_lstm_cell(initializer=initializer)
+        self.fw_cell_d, self.bw_cell_d,_,_ = self.__build_bidi_lstm_cell(initializer=initializer)
+        d_states_series, d_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.fw_cell_d,
+                                                                             cell_bw=self.bw_cell_d,
                                                 inputs=tf.stack(embedded_docs),
                                                 sequence_length=d_lengths,
                                                 initial_state_fw=None,
@@ -80,10 +81,10 @@ class BidiLSTMReader(DeepLSTMReader):
                                                 parallel_iterations=None,
                                                 swap_memory=False,
                                                 time_major=False,
-                                                scope=None)
+                                                scope="document")
 
-        q_states_series, q_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.stacked_cell,
-                                                                           cell_bw=self.stacked_cell,
+        q_states_series, q_current_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=self.fw_cell_q,
+                                                                           cell_bw=self.bw_cell_q,
                                                                            inputs=tf.stack(embedded_qs),
                                                                            sequence_length=q_lengths,
                                                                            initial_state_fw=None,
@@ -92,7 +93,7 @@ class BidiLSTMReader(DeepLSTMReader):
                                                                            parallel_iterations=None,
                                                                            swap_memory=False,
                                                                            time_major=False,
-                                                                         scope=None)
+                                                                         scope="query")
 
         q_state_fw, q_state_bw = q_current_state
         tf.logging.info(q_state_fw)
@@ -104,6 +105,7 @@ class BidiLSTMReader(DeepLSTMReader):
 
         q_rep = tf.concat([q_current_state_fw, q_current_state_bw],axis=1)# tf.stack(states)
         tf.logging.info(q_rep)
+
         self.output_size = self.hparams.depth * self.hparams.number_of_hidden_units * 2
         self.q_rep = tf.reshape(q_rep, [self.hparams.batch_size, self.output_size])
         self.document_token_state_size = self.hparams.number_of_hidden_units * 2
@@ -118,6 +120,8 @@ class BidiLSTMReader(DeepLSTMReader):
 
         tf.logging.info(d_states_series)
         d_states_series_fw, d_states_series_bw = d_states_series
+
+
         self.raw_sequence_output = tf.unstack(tf.concat([d_states_series_fw,d_states_series_bw],axis=2))
         self.sequence_output = [tf.matmul(s,self.W_proj) for s in self.raw_sequence_output]
         tf.logging.info(self.sequence_output)
@@ -154,19 +158,27 @@ class BidiLSTMReader(DeepLSTMReader):
         tf.summary.scalar("accuracy", self.accuracy)
 
 
-    def __build_deep_lstm_cell(self,initializer):
-        self.cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
+    def __build_bidi_lstm_cell(self,initializer):
+        fw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
+        bw_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
 
-        self.cell = tf.contrib.rnn.ResidualWrapper(self.cell)
+        fw_cell = tf.contrib.rnn.ResidualWrapper(fw_cell)
+        bw_cell = tf.contrib.rnn.ResidualWrapper(bw_cell)
+
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-            self.cell = tf.nn.rnn_cell.DropoutWrapper(self.cell, output_keep_prob=self.hparams.keep_prob)
+            fw_cell = tf.nn.rnn_cell.DropoutWrapper(fw_cell, output_keep_prob=self.hparams.keep_prob)
+            bw_cell = tf.nn.rnn_cell.DropoutWrapper(bw_cell, output_keep_prob=self.hparams.keep_prob)
+
         #elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
         #else: #if self.mode == tf.contrib.learn.ModeKeys.INFER:
-        self.stacked_cell = tf.contrib.rnn.MultiRNNCell([self.cell] * self.hparams.depth,state_is_tuple=True)
+        fw_stacked_cell = tf.contrib.rnn.MultiRNNCell([fw_cell] * self.hparams.depth,state_is_tuple=True)
+        bw_stacked_cell = tf.contrib.rnn.MultiRNNCell([bw_cell] * self.hparams.depth,state_is_tuple=True)
 
-        self.initial_state = self.stacked_cell.zero_state(self.hparams.batch_size, tf.float32)
+        initial_state_fw = fw_stacked_cell.zero_state(self.hparams.batch_size, tf.float32)
+        initial_state_bw = bw_stacked_cell.zero_state(self.hparams.batch_size, tf.float32)
 
 
+        return fw_stacked_cell, bw_stacked_cell, initial_state_fw, initial_state_bw
 
 
     def train(self):
@@ -213,10 +225,10 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("number_of_epochs", 100, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
-    hparams.DEFINE_integer("depth", 2, "Depth [1]")
+    hparams.DEFINE_integer("depth", 1, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
     hparams.DEFINE_integer("number_of_hidden_units", 128, "The size of hidden layers")
-    hparams.DEFINE_float("learning_rate", 1e-6, "Learning rate [0.00005]")
+    hparams.DEFINE_float("learning_rate", 5e-5, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
     hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
