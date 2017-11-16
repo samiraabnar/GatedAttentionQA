@@ -166,8 +166,11 @@ class BidiLSTMReader(DeepLSTMReader):
         #bw_cell = tf.contrib.rnn.ResidualWrapper(bw_cell)
 
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
+
             fw_cell = tf.nn.rnn_cell.DropoutWrapper(fw_cell, output_keep_prob=self.hparams.keep_prob)
             bw_cell = tf.nn.rnn_cell.DropoutWrapper(bw_cell, output_keep_prob=self.hparams.keep_prob)
+
+
 
         #elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
         #else: #if self.mode == tf.contrib.learn.ModeKeys.INFER:
@@ -228,7 +231,7 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("depth", 1, "Depth [1]")
     hparams.DEFINE_integer("max_nsteps", 1000, "Max number of steps [1000]")
     hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
-    hparams.DEFINE_float("learning_rate", 1e-6, "Learning rate [0.00005]")
+    hparams.DEFINE_float("learning_rate", 5e-5, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
     hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
