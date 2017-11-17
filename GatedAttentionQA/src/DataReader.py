@@ -190,6 +190,8 @@ class DataReader(object):
         print(" [*] Convert data in %s into vocab indicies..." % (train_path))
         self.questions_to_token_ids(train_path, vocab_fname, vocab_size)
 
+
+
     def load_vocab(self,data_dir, dataset_name, vocab_size):
         vocab_fname = os.path.join(data_dir, dataset_name, "%s.vocab%s" % (dataset_name, vocab_size))
         print(" [*] Loading vocab from %s ..." % vocab_fname)
@@ -277,12 +279,12 @@ def read_tf_record_file(filename_queue):
 
 
 
-def test2(train_files):
+def test2(train_files,mode):
     filename_queue = tf.train.string_input_producer(train_files)
     reader = tf.WholeFileReader()
     key, example = reader.read(filename_queue)
     parsed_example = tf.string_split([example], '\n\n')
-    filename = os.path.join("../data", "cnn" +"_0"+ '.tfrecords')
+    filename = os.path.join("../data", "cnn_"+mode+"_0"+ '.tfrecords')
     writer = tf.python_io.TFRecordWriter(filename)
 
     with tf.Session() as sess:
@@ -393,16 +395,33 @@ def reader2():
 if __name__ == '__main__':
 
     vocab_size = 10000
-    train_files = glob(os.path.join("../data", "cnn", "questions",
-                                    "training", "*.question.ids%s_*" % (vocab_size)))
+    data_dir = "../data"
+    dataset_name="cnn"
+    vocab_size=vocab_size
+    dr = DataReader()
+    # dr.prepare_data(data_dir="../data",
+    #                dataset_name="cnn",
+    #                vocab_size=vocab_size)
+
+
+    """
+    train_path = os.path.join(data_dir, dataset_name, 'questions', 'validation')
+    vocab_fname = os.path.join(data_dir, dataset_name, '%s.vocab%s' % (dataset_name, vocab_size))
+    print(" [*] Convert data in %s into vocab indicies..." % (train_path))
+    dr.questions_to_token_ids(train_path, vocab_fname, vocab_size)
+    """
 
     #dr = DataReader()
     #dr.prepare_data(data_dir="../data",
     #                dataset_name="cnn",
     #                vocab_size=vocab_size)
-    #test2(train_files)
 
-    reader2()
+    mode = "validation"
+    train_files = glob(os.path.join("../data", "cnn", "questions",
+                                    mode, "*.question.ids%s_*" % (vocab_size)))
+    test2(train_files,mode)
+
+    #reader2()
 
     #vocab, rev_vocab = dr.load_vocab(data_dir="../data/",
     #                                                         dataset_name="cnn",

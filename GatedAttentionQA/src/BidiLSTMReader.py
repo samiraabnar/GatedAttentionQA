@@ -7,6 +7,9 @@ import tensorflow as tf
 import numpy as np
 import time
 
+from glob import glob
+import os
+
 
 
 class BidiLSTMReader(DeepLSTMReader):
@@ -16,41 +19,19 @@ class BidiLSTMReader(DeepLSTMReader):
     def define_graph(self):
 
 
-        filenames = ["../data/cnn_0.tfrecords"]
-        min_after_dequeue = 1000
 
-        filename_queue = tf.train.string_input_producer(
-            filenames)
-        document, question, answer, document_shape, question_shape, answer_shape = read_tf_record_file(filename_queue)
 
-        d_batch, q_batch, ans_batch, document_shape_batch, question_shape_batch, answer_shape_batch = tf.train.shuffle_batch(
-            [document, question, answer, document_shape, question_shape, answer_shape], batch_size=self.hparams.batch_size,
-            capacity=min_after_dequeue * 3 + 1, min_after_dequeue=min_after_dequeue)
-        #d_q_batch = tf.sparse_concat(axis=1, sp_inputs=[d_batch, q_batch], )
-        dense_d_batch = tf.sparse_to_dense(sparse_indices=d_batch.indices,
-                                             output_shape=d_batch.dense_shape,
-                                             sparse_values=d_batch.values,
-                                             default_value=0,
-                                             validate_indices=True,
-                                             name=None)
 
-        dense_q_batch = tf.sparse_to_dense(sparse_indices=q_batch.indices,
-                                           output_shape=q_batch.dense_shape,
-                                           sparse_values=q_batch.values,
-                                           default_value=0,
-                                           validate_indices=True,
-                                           name=None)
-        dens_ans_batch = tf.sparse_to_dense(sparse_indices=ans_batch.indices,
-                                            output_shape=ans_batch.dense_shape,
-                                            sparse_values=ans_batch.values,
-                                            default_value=0,
-                                            validate_indices=True,
-                                            name=None)
-        d_lengths = tf.reshape(document_shape_batch, [self.hparams.batch_size])
-        q_lengths = tf.reshape(question_shape_batch, [self.hparams.batch_size])
-        #d_q_lengths = tf.reduce_sum(tf.concat(
-        #    [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
-        #    axis=1), axis=1)
+        if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
+            trian_filenames = glob(os.path.join("../data", "cnn_*.tfrecords"))
+            min_after_dequeue = 1000
+            d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths = self.prepare_train_data(min_after_dequeue,
+                                                                                                     trian_filenames)
+        elif self.mode == tf.contrib.learn.ModeKeys.INFER:
+            validation_filenames = glob(os.path.join("../data", "validation_cnn_*.tfrecords"))
+            d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths = self.prepare_validation_data(1,
+                                                                                                     validation_filenames)
+
 
 
         initializer = tf.truncated_normal_initializer(stddev=1e-4) #tf.contrib.layers.xavier_initializer()
@@ -157,6 +138,75 @@ class BidiLSTMReader(DeepLSTMReader):
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         tf.summary.scalar("accuracy", self.accuracy)
 
+    def prepare_train_data(self, min_after_dequeue, trian_filenames):
+        filename_queue = tf.train.string_input_producer(
+            trian_filenames)
+        document, question, answer, document_shape, question_shape, answer_shape = read_tf_record_file(filename_queue)
+        d_batch, q_batch, ans_batch, document_shape_batch, question_shape_batch, answer_shape_batch = tf.train.shuffle_batch(
+            [document, question, answer, document_shape, question_shape, answer_shape],
+            batch_size=self.hparams.batch_size,
+            capacity=min_after_dequeue * 3 + 1, min_after_dequeue=min_after_dequeue)
+        # d_q_batch = tf.sparse_concat(axis=1, sp_inputs=[d_batch, q_batch], )
+        dense_d_batch = tf.sparse_to_dense(sparse_indices=d_batch.indices,
+                                           output_shape=d_batch.dense_shape,
+                                           sparse_values=d_batch.values,
+                                           default_value=0,
+                                           validate_indices=True,
+                                           name=None)
+        dense_q_batch = tf.sparse_to_dense(sparse_indices=q_batch.indices,
+                                           output_shape=q_batch.dense_shape,
+                                           sparse_values=q_batch.values,
+                                           default_value=0,
+                                           validate_indices=True,
+                                           name=None)
+        dens_ans_batch = tf.sparse_to_dense(sparse_indices=ans_batch.indices,
+                                            output_shape=ans_batch.dense_shape,
+                                            sparse_values=ans_batch.values,
+                                            default_value=0,
+                                            validate_indices=True,
+                                            name=None)
+        d_lengths = tf.reshape(document_shape_batch, [self.hparams.batch_size])
+        q_lengths = tf.reshape(question_shape_batch, [self.hparams.batch_size])
+        # d_q_lengths = tf.reduce_sum(tf.concat(
+        #    [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
+        #    axis=1), axis=1)
+        return d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths
+
+
+    def prepare_validation_data(self, min_after_dequeue, validation_filenames):
+        filename_queue = tf.train.string_input_producer(
+            validation_filenames)
+        document, question, answer, document_shape, question_shape, answer_shape = read_tf_record_file(filename_queue)
+        d_batch, q_batch, ans_batch, document_shape_batch, question_shape_batch, answer_shape_batch = tf.train.shuffle_batch(
+            [document, question, answer, document_shape, question_shape, answer_shape],
+            batch_size=self.hparams.batch_size,
+            capacity=min_after_dequeue * 3 + 1, min_after_dequeue=min_after_dequeue)
+        # d_q_batch = tf.sparse_concat(axis=1, sp_inputs=[d_batch, q_batch], )
+        dense_d_batch = tf.sparse_to_dense(sparse_indices=d_batch.indices,
+                                           output_shape=d_batch.dense_shape,
+                                           sparse_values=d_batch.values,
+                                           default_value=0,
+                                           validate_indices=True,
+                                           name=None)
+        dense_q_batch = tf.sparse_to_dense(sparse_indices=q_batch.indices,
+                                           output_shape=q_batch.dense_shape,
+                                           sparse_values=q_batch.values,
+                                           default_value=0,
+                                           validate_indices=True,
+                                           name=None)
+        dens_ans_batch = tf.sparse_to_dense(sparse_indices=ans_batch.indices,
+                                            output_shape=ans_batch.dense_shape,
+                                            sparse_values=ans_batch.values,
+                                            default_value=0,
+                                            validate_indices=True,
+                                            name=None)
+        d_lengths = tf.reshape(document_shape_batch, [self.hparams.batch_size])
+        q_lengths = tf.reshape(question_shape_batch, [self.hparams.batch_size])
+        # d_q_lengths = tf.reduce_sum(tf.concat(
+        #    [tf.reshape(document_shape_batch, (self.hparams.batch_size, 1)), tf.reshape(question_shape_batch, (self.hparams.batch_size, 1))],
+        #    axis=1), axis=1)
+        return d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths
+
 
     def __build_bidi_lstm_cell(self,initializer):
         fw_cell = tf.contrib.rnn.LSTMBlockCell(self.hparams.number_of_hidden_units, forget_bias=0.0)
@@ -202,16 +252,17 @@ class BidiLSTMReader(DeepLSTMReader):
         for epoch in range(self.hparams.number_of_epochs):
             iteration = 0
             while iteration * self.hparams.batch_size < self.hparams.training_size:
-                _, summary_str, cost, accuracy = self.sess.run([self.update, merged, self.train_loss, self.accuracy])
+                _, summary_str, train_cost, train_accuracy = self.sess.run([self.update, merged, self.train_loss, self.accuracy])
 
                 iteration += 1
-                if iteration % 10 == 0:
+                if iteration % 100 == 0:
                     writer.add_summary(summary_str, iteration)
                     print("iterations: [%2d] time: %4.4f, loss: %.8f, accuracy: %.8f" \
-                          % (iteration, time.time() - start_time, np.mean(cost), accuracy))
+                          % (iteration, time.time() - start_time, np.mean(train_cost), train_accuracy))
 
 
-        self.save()
+                    self.save(global_step = self.global_step)
+
         coord.request_stop()
         coord.join(threads)
 
@@ -258,9 +309,9 @@ if __name__ == '__main__':
         bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
         bidi_lstm_reader.define_graph()
         bidi_lstm_reader._define_train()
-        #bidi_lstm_reader.train()
-        bidi_lstm_reader.load()
-        bidi_lstm_reader.train(init=False)
+        bidi_lstm_reader.train()
+        #bidi_lstm_reader.load()
+        #bidi_lstm_reader.train(init=False)
 
 
     #(_, document, question, answer, _), data_idx, data_max_idx = next(data_iterator)
