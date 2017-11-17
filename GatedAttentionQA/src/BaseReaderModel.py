@@ -30,10 +30,10 @@ class BaseReaderModel(object):
 
         print(" [*] Loading checkpoints...")
         if self.hparams.batch_size:
-            model_dir = "%s_%s_%s" % (model_name, dataset_name, self.hparams.batch_size)
+            model_dir = "%s_%s_%s" % (model_name, self.hparams.dataset_name, self.hparams.batch_size)
         else:
-            model_dir = dataset_name
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+            model_dir = self.hparams.dataset_name
+        checkpoint_dir = os.path.join(self.hparams.checkpoint_dir, model_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
