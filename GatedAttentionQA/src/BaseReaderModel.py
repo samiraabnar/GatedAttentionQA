@@ -7,7 +7,7 @@ class BaseReaderModel(object):
         self.vocab = None
         self.data = None
 
-    def save(self,global_step =None):
+    def save(self,global_step=None):
         self.saver = tf.train.Saver()
 
         print(" [*] Saving checkpoints...")

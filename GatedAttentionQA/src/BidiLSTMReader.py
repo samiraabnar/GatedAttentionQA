@@ -255,12 +255,12 @@ class BidiLSTMReader(DeepLSTMReader):
                 _, summary_str, train_cost, train_accuracy = self.sess.run([self.update, merged, self.train_loss, self.accuracy])
 
                 iteration += 1
-                if iteration % 100 == 0:
+                if iteration % 10 == 0:
                     writer.add_summary(summary_str, iteration)
                     print("iterations: [%2d] time: %4.4f, loss: %.8f, accuracy: %.8f" \
                           % (iteration, time.time() - start_time, np.mean(train_cost), train_accuracy))
 
-
+                if iteration % 1000 == 0:
                     self.save(global_step = self.global_step)
 
         coord.request_stop()
@@ -277,7 +277,7 @@ if __name__ == '__main__':
 
     hparams = tf.flags
     hparams.DEFINE_integer("training_size", 1000, "total number of training samples")
-    hparams.DEFINE_integer("number_of_epochs", 100, "Epoch to train [25]")
+    hparams.DEFINE_integer("number_of_epochs", 200, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
     hparams.DEFINE_integer("depth", 1, "Depth [1]")
