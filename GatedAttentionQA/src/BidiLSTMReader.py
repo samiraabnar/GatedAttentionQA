@@ -276,7 +276,7 @@ if __name__ == '__main__':
 
 
     hparams = tf.flags
-    hparams.DEFINE_integer("training_size", 1000, "total number of training samples")
+    hparams.DEFINE_integer("training_size", 381000, "total number of training samples")
     hparams.DEFINE_integer("number_of_epochs", 200, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
