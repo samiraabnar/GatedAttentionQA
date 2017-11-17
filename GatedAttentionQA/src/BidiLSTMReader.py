@@ -285,7 +285,7 @@ if __name__ == '__main__':
     hparams.DEFINE_integer("number_of_hidden_units", 256, "The size of hidden layers")
     hparams.DEFINE_float("learning_rate", 5e-5, "Learning rate [0.00005]")
     hparams.DEFINE_float("momentum", 0.9, "Momentum of RMSProp [0.9]")
-    hparams.DEFINE_float("keep_prob", 1., "keep_prob [0.5]")
+    hparams.DEFINE_float("keep_prob", 0.8, "keep_prob [0.5]")
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
     hparams.DEFINE_string("dtype", "float32", "dtype [float32]")
     hparams.DEFINE_string("model", "LSTM", "The type of model to train and test [LSTM, BiLSTM, Attentive, Impatient]")
