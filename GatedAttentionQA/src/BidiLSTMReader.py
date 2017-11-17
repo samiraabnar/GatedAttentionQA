@@ -259,7 +259,7 @@ if __name__ == '__main__':
         bidi_lstm_reader._define_train()
         #bidi_lstm_reader.train()
         bidi_lstm_reader.load()
-        bidi_lstm_reader.train()
+        bidi_lstm_reader.train(init=False)
 
 
     #(_, document, question, answer, _), data_idx, data_max_idx = next(data_iterator)
