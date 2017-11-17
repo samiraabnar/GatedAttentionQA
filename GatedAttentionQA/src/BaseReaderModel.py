@@ -24,7 +24,7 @@ class BaseReaderModel(object):
         self.saver.save(self.sess,
                         os.path.join(self.hparams.checkpoint_dir, model_name), global_step=global_step)
 
-    def load(self, sess, checkpoint_dir, dataset_name):
+    def load(self):
         model_name = type(self).__name__ or "Reader"
         self.saver = tf.train.Saver()
 
