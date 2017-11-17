@@ -184,16 +184,17 @@ class BidiLSTMReader(DeepLSTMReader):
         return fw_stacked_cell, bw_stacked_cell, initial_state_fw, initial_state_bw
 
 
-    def train(self):
+    def train(self,init=True):
 
         merged = tf.summary.merge_all()
         writer = tf.summary.FileWriter("../tmp/bidi", self.sess.graph)
 
         start_time = time.time()
-        init_g = tf.global_variables_initializer()
-        init_l = tf.local_variables_initializer()
-        self.sess.run(init_g)
-        self.sess.run(init_l)
+        if init:
+            init_g = tf.global_variables_initializer()
+            init_l = tf.local_variables_initializer()
+            self.sess.run(init_g)
+            self.sess.run(init_l)
         # Start populating the filename queue.
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
