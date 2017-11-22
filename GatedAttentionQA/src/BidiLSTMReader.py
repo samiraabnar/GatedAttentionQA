@@ -17,11 +17,6 @@ class BidiLSTMReader(DeepLSTMReader):
         super(BidiLSTMReader, self).__init__(sess,hparams,mode,data_reader)
 
     def define_graph(self):
-
-
-
-
-
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
             trian_filenames = glob(os.path.join("../data", "cnn_*.tfrecords"))
             min_after_dequeue = 1000
@@ -234,17 +229,19 @@ class BidiLSTMReader(DeepLSTMReader):
         return fw_stacked_cell, bw_stacked_cell, initial_state_fw, initial_state_bw
 
 
-    def train(self,init=True):
+    def train(self,continue_=False):
 
         merged = tf.summary.merge_all()
         writer = tf.summary.FileWriter("../tmp/bidi", self.sess.graph)
 
         start_time = time.time()
-        if init:
+        if continue_ == False:
             init_g = tf.global_variables_initializer()
             init_l = tf.local_variables_initializer()
             self.sess.run(init_g)
             self.sess.run(init_l)
+        else:
+            print(self.load())
         # Start populating the filename queue.
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
@@ -266,7 +263,22 @@ class BidiLSTMReader(DeepLSTMReader):
         coord.request_stop()
         coord.join(threads)
 
+    def validate():
+        start_time = time.time()
+        # Start populating the filename queue.
 
+        print(self.load())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+
+        iteration = 0
+        while iteration * self.hparams.batch_size < self.hparams.training_size:
+           train_cost, train_accuracy = self.sess.run([self.train_loss, self.accuracy])
+
+        print("iterations: [%2d] time: %4.4f, loss: %.8f, accuracy: %.8f" % (iteration, time.time() - start_time, np.mean(train_cost), train_accuracy))
+
+        coord.request_stop()
+        coord.join(threads)
 
 
 if __name__ == '__main__':
@@ -291,7 +303,7 @@ if __name__ == '__main__':
     hparams.DEFINE_string("model", "LSTM", "The type of model to train and test [LSTM, BiLSTM, Attentive, Impatient]")
     hparams.DEFINE_string("data_dir", "../data", "The name of data directory [data]")
     hparams.DEFINE_string("dataset_name", "cnn", "The name of dataset [cnn, dailymail]")
-    hparams.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
+    hparams.DEFINE_string("checkpoint_dir", "../checkpoint", "Directory name to save the checkpoints [checkpoint]")
     hparams.DEFINE_integer("learning_rate_warmup_steps", 0, "How many steps we inverse-decay learning.")
     hparams.DEFINE_float("learning_rate_warmup_factor", 1.0,"The inverse decay factor for each warmup step.")
     hparams.DEFINE_integer("start_decay_step", 10, "When we start to decay")
@@ -311,7 +323,7 @@ if __name__ == '__main__':
         bidi_lstm_reader._define_train()
         bidi_lstm_reader.train()
         #bidi_lstm_reader.load()
-        #bidi_lstm_reader.train(init=False)
+        #bidi_lstm_reader.train(continue_=True)
 
 
     #(_, document, question, answer, _), data_idx, data_max_idx = next(data_iterator)

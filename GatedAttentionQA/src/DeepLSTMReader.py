@@ -144,7 +144,7 @@ class DeepLSTMReader(BaseReaderModel):
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
             starter_learning_rate = self.hparams.learning_rate
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step,
-                                                       1000, 0.96, staircase=True)
+                                                       10000, 0.96, staircase=True)
             #inv_decay = warmup_factor ** (
             #    tf.to_float(warmup_steps - self.global_step))
             #self.learning_rate = tf.cond(

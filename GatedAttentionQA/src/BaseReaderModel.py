@@ -19,10 +19,10 @@ class BaseReaderModel(object):
 
         checkpoint_dir = os.path.join(self.hparams.checkpoint_dir, model_dir)
         if not os.path.exists(checkpoint_dir):
-
             os.makedirs(checkpoint_dir)
+        print(checkpoint_dir)
         self.saver.save(self.sess,
-                        os.path.join(self.hparams.checkpoint_dir, model_name), global_step=global_step)
+                        os.path.join(checkpoint_dir, model_name), global_step=global_step)
 
     def load(self):
         model_name = type(self).__name__ or "Reader"
