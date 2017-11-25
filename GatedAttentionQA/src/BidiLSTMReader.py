@@ -321,7 +321,7 @@ if __name__ == '__main__':
         bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
         bidi_lstm_reader.define_graph()
         bidi_lstm_reader._define_train()
-        bidi_lstm_reader.train()
+        bidi_lstm_reader.train(continue_=True)
         #bidi_lstm_reader.load()
         #bidi_lstm_reader.train(continue_=True)
 
