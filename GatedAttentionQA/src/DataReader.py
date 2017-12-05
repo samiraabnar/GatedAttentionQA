@@ -284,7 +284,7 @@ def test2(train_files,mode):
     reader = tf.WholeFileReader()
     key, example = reader.read(filename_queue)
     parsed_example = tf.string_split([example], '\n\n')
-    filename = os.path.join("../data", "cnn_"+mode+"_0"+ '.tfrecords')
+    filename = os.path.join("../data_2", mode+"_cnn_0"+ '.tfrecords')
     writer = tf.python_io.TFRecordWriter(filename)
 
     with tf.Session() as sess:
@@ -296,7 +296,7 @@ def test2(train_files,mode):
             # Retrieve a single instance:
             if i > 0 and (i % 1000 == 0):
                 writer.close()
-                filename = os.path.join("../data", "cnn" + "_"+str(i) + '.tfrecords')
+                filename = os.path.join("../data_2", mode+"_cnn" + "_"+str(i) + '.tfrecords')
                 writer = tf.python_io.TFRecordWriter(filename)
 
             (_, data, _) = sess.run(parsed_example)
@@ -395,7 +395,7 @@ def reader2():
 if __name__ == '__main__':
 
     vocab_size = 10000
-    data_dir = "../data"
+    data_dir = "../data_2"
     dataset_name="cnn"
     vocab_size=vocab_size
     dr = DataReader()
@@ -404,12 +404,12 @@ if __name__ == '__main__':
                     vocab_size=vocab_size)
     """
 
-    """
+   
     train_path = os.path.join(data_dir, dataset_name, 'questions', 'validation')
     vocab_fname = os.path.join(data_dir, dataset_name, '%s.vocab%s' % (dataset_name, vocab_size))
     print(" [*] Convert data in %s into vocab indicies..." % (train_path))
     dr.questions_to_token_ids(train_path, vocab_fname, vocab_size)
-    """
+   
 
     #dr = DataReader()
     #dr.prepare_data(data_dir="../data",
@@ -418,8 +418,8 @@ if __name__ == '__main__':
 
 
     mode = "validation"
-    train_files = glob(os.path.join("../data", "cnn", "questions",
-                                    mode, "*.question.ids%s_*" % (vocab_size)))
+    train_files = glob(os.path.join("../data_2", "cnn", "questions",mode,"question.ids%s_*" % (vocab_size)))
+    print(train_files)
     test2(train_files,mode)
 
     #reader2()

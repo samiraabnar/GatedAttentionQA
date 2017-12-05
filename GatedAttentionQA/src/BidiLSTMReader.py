@@ -18,12 +18,12 @@ class BidiLSTMReader(DeepLSTMReader):
 
     def define_graph(self):
         if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-            trian_filenames = glob(os.path.join("../data", "cnn_*.tfrecords"))
+            trian_filenames = glob(os.path.join("../data_2", "cnn_*.tfrecords"))
             min_after_dequeue = 1000
             d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths = self.prepare_train_data(min_after_dequeue,
                                                                                                      trian_filenames)
         elif self.mode == tf.contrib.learn.ModeKeys.INFER:
-            validation_filenames = glob(os.path.join("../data", "validation_cnn_*.tfrecords"))
+            validation_filenames = glob(os.path.join("../data_2", "validation_cnn_*.tfrecords"))
             d_lengths, dens_ans_batch, dense_d_batch, dense_q_batch, q_lengths = self.prepare_validation_data(1,
                                                                                                      validation_filenames)
 
@@ -169,6 +169,7 @@ class BidiLSTMReader(DeepLSTMReader):
 
 
     def prepare_validation_data(self, min_after_dequeue, validation_filenames):
+        print("validation files: %s" %(validation_filenames)) 
         filename_queue = tf.train.string_input_producer(
             validation_filenames)
         document, question, answer, document_shape, question_shape, answer_shape = read_tf_record_file(filename_queue)
@@ -283,7 +284,7 @@ class BidiLSTMReader(DeepLSTMReader):
 
 if __name__ == '__main__':
     dataset_name = "cnn"
-    dataset_dir = "../data"
+    dataset_dir = "../data_2"
     dr = DataReader()
 
 
@@ -301,7 +302,7 @@ if __name__ == '__main__':
     hparams.DEFINE_float("decay", 0.95, "Decay of RMSProp [0.95]")
     hparams.DEFINE_string("dtype", "float32", "dtype [float32]")
     hparams.DEFINE_string("model", "Attentive", "The type of model to train and test [LSTM, BiLSTM, Attentive, Impatient]")
-    hparams.DEFINE_string("data_dir", "../data", "The name of data directory [data]")
+    hparams.DEFINE_string("data_dir", "../data_2", "The name of data directory [data]")
     hparams.DEFINE_string("dataset_name", "cnn", "The name of dataset [cnn, dailymail]")
     hparams.DEFINE_string("checkpoint_dir", "../checkpoint", "Directory name to save the checkpoints [checkpoint]")
     hparams.DEFINE_integer("learning_rate_warmup_steps", 0, "How many steps we inverse-decay learning.")
@@ -318,14 +319,15 @@ if __name__ == '__main__':
 
     tf.logging.set_verbosity(tf.logging.INFO)
     with tf.Session() as sess:
-        bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
-        bidi_lstm_reader.define_graph()
+        #bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
+        #bidi_lstm_reader.define_graph()
         #bidi_lstm_reader._define_train()
         #bidi_lstm_reader.train(continue_=True)
         #bidi_lstm_reader.load()
         #bidi_lstm_reader.train(continue_=True)
         bidi_lstm_reader = BidiLSTMReader(sess=sess, hparams=hparams, mode=tf.contrib.learn.ModeKeys.INFER,
                                           data_reader=dr)
+        bidi_lstm_reader.define_graph()
         bidi_lstm_reader.validate()
 
 
