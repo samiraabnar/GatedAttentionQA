@@ -399,10 +399,10 @@ if __name__ == '__main__':
     dataset_name="cnn"
     vocab_size=vocab_size
     dr = DataReader()
-    # dr.prepare_data(data_dir="../data",
-    #                dataset_name="cnn",
-    #                vocab_size=vocab_size)
-
+    """dr.prepare_data(data_dir="../data",
+                    dataset_name="cnn",
+                    vocab_size=vocab_size)
+    """
 
     """
     train_path = os.path.join(data_dir, dataset_name, 'questions', 'validation')
@@ -415,6 +415,7 @@ if __name__ == '__main__':
     #dr.prepare_data(data_dir="../data",
     #                dataset_name="cnn",
     #                vocab_size=vocab_size)
+
 
     mode = "validation"
     train_files = glob(os.path.join("../data", "cnn", "questions",

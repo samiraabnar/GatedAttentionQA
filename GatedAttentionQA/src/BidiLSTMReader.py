@@ -263,7 +263,7 @@ class BidiLSTMReader(DeepLSTMReader):
         coord.request_stop()
         coord.join(threads)
 
-    def validate():
+    def validate(self):
         start_time = time.time()
         # Start populating the filename queue.
 
@@ -288,7 +288,7 @@ if __name__ == '__main__':
 
 
     hparams = tf.flags
-    hparams.DEFINE_integer("training_size", 381000, "total number of training samples")
+    hparams.DEFINE_integer("training_size",381000 , "total number of training samples") #381000
     hparams.DEFINE_integer("number_of_epochs", 200, "Epoch to train [25]")
     hparams.DEFINE_integer("vocab_size", 10000, "The size of vocabulary [10000]")
     hparams.DEFINE_integer("batch_size", 32, "The size of batch images [32]")
@@ -320,10 +320,14 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         bidi_lstm_reader = BidiLSTMReader(sess=sess,hparams=hparams, mode=tf.contrib.learn.ModeKeys.TRAIN, data_reader=dr)
         bidi_lstm_reader.define_graph()
-        bidi_lstm_reader._define_train()
-        bidi_lstm_reader.train(continue_=True)
+        #bidi_lstm_reader._define_train()
+        #bidi_lstm_reader.train(continue_=True)
         #bidi_lstm_reader.load()
         #bidi_lstm_reader.train(continue_=True)
+        bidi_lstm_reader = BidiLSTMReader(sess=sess, hparams=hparams, mode=tf.contrib.learn.ModeKeys.INFER,
+                                          data_reader=dr)
+        bidi_lstm_reader.validate()
+
 
 
     #(_, document, question, answer, _), data_idx, data_max_idx = next(data_iterator)
